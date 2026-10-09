@@ -8,6 +8,8 @@ idea ──► stories ──► plan ──► (code) ──► review ─┐
                                          security┘
 ```
 
+> New here? Start with the step-by-step [beginner guide](docs/GUIDE.md).
+
 | Command | What it does | Report |
 |---|---|---|
 | `sdlc stories "<idea>"` | Epic + INVEST user stories, Given/When/Then criteria, MoSCoW, estimates, open questions | `stories.md/json` |
