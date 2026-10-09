@@ -1,0 +1,18 @@
+---
+description: How to use the sdlc-rig SDLC assistant in this repository
+alwaysApply: false
+---
+
+This repository uses `sdlc` (built on githubnext/rig) for SDLC steps. Reports are written to `.sdlc/reports/` as Markdown and JSON.
+
+- Requirements → `npx sdlc stories "<idea>"`
+- Design → `npx sdlc plan "<feature>"` (reads stories.json when present)
+- Code review → `npx sdlc review [--base main]`
+- Tests → `npx sdlc test [--cmd "<command>"]`
+- Security → `npx sdlc security [--compliance HIPAA]`
+- Release notes → `npx sdlc release [--from <tag>]`
+- Everything before a PR → `npx sdlc pr --base main`
+
+When running inside Cursor, pass `--engine cursor` so the agents use the Cursor CLI and this account's models.
+Treat report findings as suggestions: verify against the code before changing anything, and ask before applying edits.
+Never echo secrets from reports or diffs.
