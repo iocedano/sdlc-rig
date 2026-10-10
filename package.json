@@ -9,7 +9,10 @@
   "scripts": {
     "sdlc": "tsx src/cli.ts",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test test/*.test.ts"
+    "test": "node --import tsx --test test/*.test.ts",
+    "build:binary": "bun scripts/build-binary.ts",
+    "build:binary:all": "bun scripts/build-binary.ts --all",
+    "install:cli": "./scripts/install.sh"
   },
   "engines": {
     "node": ">=20"
@@ -31,6 +34,7 @@
     "bin",
     "src",
     "templates",
-    "README.md"
+    "README.md",
+    "scripts"
   ]
 }

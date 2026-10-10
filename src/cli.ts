@@ -1,4 +1,4 @@
-import { cp, mkdir, readdir, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -18,6 +18,7 @@ import {
   runTests,
   scanDiffForSecrets,
 } from "./context.ts";
+import { EMBEDDED_TEMPLATES } from "./embedded-templates.ts";
 import { ENGINES, resolveEngineConfig, setupEngine } from "./engine.ts";
 import { renderPlan, renderRelease, renderReview, renderSecurity, renderStories, renderTests } from "./render.ts";
 
@@ -207,17 +208,22 @@ async function main() {
 }
 
 async function init(force = false) {
-  const templates = join(dirname(fileURLToPath(import.meta.url)), "..", "templates");
-  const files = await listFiles(templates);
-  for (const file of files) {
-    const rel = relative(templates, file);
+  // Standalone binary: templates are embedded. From source: read ./templates.
+  let files = Object.entries(EMBEDDED_TEMPLATES);
+  if (files.length === 0) {
+    const templates = join(dirname(fileURLToPath(import.meta.url)), "..", "templates");
+    files = await Promise.all(
+      (await listFiles(templates)).map(async (file) => [relative(templates, file), await readFile(file, "utf8")] as [string, string]),
+    );
+  }
+  for (const [rel, content] of files) {
     const dest = join(process.cwd(), rel);
     if (existsSync(dest) && !force) {
       log(`skip ${rel} (exists; use --force)`);
       continue;
     }
     await mkdir(dirname(dest), { recursive: true });
-    await cp(file, dest);
+    await writeFile(dest, content);
     log(`added ${rel}`);
   }
   log("done. Add .sdlc/ to .gitignore if you don't want reports committed.");

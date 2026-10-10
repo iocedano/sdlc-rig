@@ -9,7 +9,7 @@ export type EngineName = (typeof ENGINES)[number];
 const DEFAULT_MODELS: Record<EngineName, string> = {
   auto: "small",
   cursor: "default",
-  anthropic: "claude-sonnet-4-5",
+  anthropic: "claude-sonnet-5-5",
   codex: "default",
   gemini: "gemini-2.5-pro",
   copilot: "small",

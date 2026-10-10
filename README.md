@@ -25,15 +25,28 @@ Reports go to `.sdlc/reports/` (change with `--out`). `--json` prints JSON; `--f
 
 ## Install
 
-Requires Node 20+.
+Three ways, pick one:
 
 ```bash
-git clone <your-repo-url> sdlc-rig && cd sdlc-rig && npm install
-npm link                      # makes `sdlc` available everywhere
-# or, inside a project:  npm i -D github:<you>/sdlc-rig   → then use `npx sdlc`
+# 1. Standalone binary on your PATH (needs Bun to build; the result needs nothing)
+./scripts/install.sh              # builds dist/sdlc, copies it to ~/.local/bin, adds that to PATH
+
+# 2. Launcher on your PATH that runs the source with Node 20+
+./scripts/install.sh --wrapper
+
+# 3. npm
+npm install && npm link           # or per project: npm i -D github:<you>/sdlc-rig, then `npx sdlc`
 ```
 
+`./scripts/install.sh --uninstall` removes the command and the PATH line. Set `SDLC_INSTALL_DIR` to install somewhere other than `~/.local/bin`.
+
 Try it with no LLM at all: `sdlc review --engine mock`.
+
+### Standalone binaries
+
+`npm run build:binary` builds `dist/sdlc` for your machine with [Bun](https://bun.sh); `npm run build:binary:all` cross-compiles for Linux (x64, arm64), macOS (x64, arm64) and Windows (x64). Each binary is about 60–85 MB and includes the runtime, Rig, the engines and the `init` templates. The Cursor, Codex and Gemini engines still need their own CLIs installed.
+
+On macOS, a binary built on another machine is blocked by Gatekeeper the first time. Building it on the Mac with `./scripts/install.sh` avoids that; otherwise run `xattr -d com.apple.quarantine sdlc && codesign --sign - sdlc`.
 
 ## Engines
 
@@ -42,7 +55,7 @@ Pick with `--engine` or `SDLC_ENGINE`; model with `--model` or `SDLC_MODEL`.
 | Engine | Auth | Notes |
 |---|---|---|
 | `cursor` | `agent login` or `CURSOR_API_KEY` | Custom adapter (`src/engines/cursor.ts`) over the Cursor CLI in headless JSON mode. Read-only (no `--force`). Extra flags via `CURSOR_AGENT_ARGS`, binary via `CURSOR_AGENT_BIN` (`cursor-agent` on older installs). |
-| `anthropic` | `ANTHROPIC_API_KEY` | Default model `claude-sonnet-4-5`. |
+| `anthropic` | `ANTHROPIC_API_KEY` | Default model `claude-sonnet-5-5`. |
 | `codex` | `OPENAI_API_KEY` / Codex login | Uses `@openai/codex-sdk`. |
 | `gemini` | Gemini CLI login | Requires the `gemini` CLI. |
 | `copilot` | Copilot SDK server | Rig's native engine. |

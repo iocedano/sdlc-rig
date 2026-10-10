@@ -71,6 +71,40 @@ For the per-project option, first push sdlc-rig to your own GitHub repository (`
 
 > Sensei says: if `sdlc: command not found` appears after `npm link`, your npm global folder is not in your PATH. Run `npm prefix -g` and add its `bin` folder to PATH, or simply use `npx sdlc` from inside the project.
 
+### Bonus technique: a real `sdlc` binary on your PATH
+
+Prefer a single file you can copy anywhere, with no Node and no `node_modules`? Build a standalone binary and let the installer put it on your PATH.
+
+1. **Install Bun** (it compiles the binary): `curl -fsSL https://bun.sh/install | bash`, then open a new terminal.
+    - Check: `bun --version` prints a version.
+2. **Run the installer** from the sdlc-rig folder: `./scripts/install.sh`
+    - It builds `dist/sdlc`, copies it to `~/.local/bin/sdlc`, and adds `~/.local/bin` to PATH in your shell's startup file (`~/.zshrc`, `~/.bashrc`, `~/.bash_profile` on macOS bash, or fish's `config.fish`). Running it twice never adds the line twice.
+3. **Open a new terminal** (or run `source ~/.zshrc`).
+    - Check: `which sdlc` shows `~/.local/bin/sdlc` and `sdlc --help` prints the commands.
+
+| Installer command | What you get |
+| --- | --- |
+| `./scripts/install.sh` | Standalone binary (needs Bun only to build it) |
+| `./scripts/install.sh --wrapper` | Tiny launcher that runs the source with Node; keep the sdlc-rig folder in place |
+| `./scripts/install.sh --uninstall` | Removes the command and the PATH line |
+| `SDLC_INSTALL_DIR=/usr/local/bin ./scripts/install.sh` | Installs somewhere else (that folder may need `sudo`) |
+
+**Doing it by hand** is just two moves: put the file in a folder, then put the folder on PATH.
+
+```bash
+mkdir -p ~/.local/bin
+cp dist/sdlc ~/.local/bin/
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc   # ~/.bashrc if you use bash
+source ~/.zshrc
+```
+
+**Building for other machines:** `npm run build:binary:all` creates binaries for Linux, macOS and Windows in `dist/`. Each one is 60–85 MB because it carries its own runtime.
+
+- macOS blocks a binary built elsewhere the first time. Fix it once with `xattr -d com.apple.quarantine sdlc && codesign --sign - sdlc`, or build it on the Mac itself.
+- Windows: copy `sdlc-windows-x64.exe` to a folder such as `%USERPROFILE%\bin`, rename it `sdlc.exe`, then add that folder in Settings → System → About → Advanced system settings → Environment Variables → `Path`.
+
+> Coach tip: the binary bundles the AI SDKs but not other tools. The `cursor`, `codex` and `gemini` engines still need their own CLIs installed, and `git` is always required.
+
 ## 4. Choose your engine (the brain)
 
 Start with `mock` to practice for free, then pick one real engine. Cursor users: choose `cursor`. Everyone else: `anthropic` is the simplest to set up.
@@ -79,7 +113,7 @@ Start with `mock` to practice for free, then pick one real engine. Cursor users:
 | --- | --- | --- | --- |
 | `mock` | Nothing | None | Placeholder answers |
 | `cursor` | Cursor account + Cursor CLI | `curl https://cursor.com/install -fsS \| bash` then `agent login` | Your Cursor default |
-| `anthropic` | Anthropic API key | `export ANTHROPIC_API_KEY=sk-ant-...` | `claude-sonnet-4-5` |
+| `anthropic` | Anthropic API key | `export ANTHROPIC_API_KEY=sk-ant-...` | `claude-sonnet-5-5` |
 | `codex` | OpenAI key or Codex login | `export OPENAI_API_KEY=sk-...` | Codex default |
 | `gemini` | Gemini CLI installed and logged in | `npm i -g @google/gemini-cli` then `gemini` | `gemini-2.5-pro` |
 | `copilot` | GitHub Copilot SDK server | See the Rig README | Copilot default |
@@ -87,7 +121,7 @@ Start with `mock` to practice for free, then pick one real engine. Cursor users:
 **Telling sdlc-rig which engine to use** (the first one found wins):
 
 1. A flag on the command: `sdlc review --engine cursor --model gpt-5`
-2. Environment variables: `export SDLC_ENGINE=anthropic` and optionally `export SDLC_MODEL=claude-sonnet-4-5`
+2. Environment variables: `export SDLC_ENGINE=anthropic` and optionally `export SDLC_MODEL=claude-sonnet-5-5`
 3. Nothing set: Rig picks automatically from the API keys it finds.
 
 **Keep your settings in one place.** sdlc-rig reads environment variables, not a `.env` file. Two easy habits:
@@ -286,7 +320,7 @@ Once set up, every pull request gets an automatic SDLC report as a comment, and 
    | Variable | Example | Effect |
    | --- | --- | --- |
    | `SDLC_ENGINE` | `cursor` | Engine for CI (default `anthropic`) |
-   | `SDLC_MODEL` | `claude-sonnet-4-5` | Override the model |
+   | `SDLC_MODEL` | `claude-sonnet-5-5` | Override the model |
    | `SDLC_COMPLIANCE` | `HIPAA,SOC 2` | Compliance focus for the security stage |
 
 5. **Open a test pull request.** Within a few minutes the bot posts a comment titled "SDLC report". New pushes update the same comment instead of adding new ones.
