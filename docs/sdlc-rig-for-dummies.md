@@ -114,7 +114,7 @@ Start with `mock` to practice for free, then pick one real engine. Cursor users:
 | `mock` | Nothing | None | Placeholder answers |
 | `cursor` | Cursor account + Cursor CLI | `curl https://cursor.com/install -fsS \| bash` then `agent login` | Your Cursor default |
 | `anthropic` | Anthropic API key | `export ANTHROPIC_API_KEY=sk-ant-...` | `claude-sonnet-5-5` |
-| `codex` | OpenAI key or Codex login | `export OPENAI_API_KEY=sk-...` | Codex default |
+| `codex` | OpenAI key or Codex login | `codex login`, or `export OPENAI_API_KEY=sk-...` | Your Codex default |
 | `gemini` | Gemini CLI installed and logged in | `npm i -g @google/gemini-cli` then `gemini` | `gemini-2.5-pro` |
 | `copilot` | GitHub Copilot SDK server | See the Rig README | Copilot default |
 
@@ -368,6 +368,7 @@ Print this page or pin it next to your monitor.
 | `SDLC_TIMEOUT_MS` | `300000` (5 min) | Time limit per agent |
 | `CURSOR_AGENT_BIN` | `agent` | Name of the Cursor CLI binary |
 | `CURSOR_AGENT_ARGS` | Empty | Extra Cursor CLI flags, e.g. `--trust` |
+| `SDLC_CODEX_BIN` | Bundled CLI, then `codex` on PATH | Path to the Codex CLI |
 | `RIG_DEBUG` | Off | Debug logs, e.g. `RIG_DEBUG=agent` |
 
 **Exit codes:** `0` success, `1` the `--fail-on` gate was reached, `2` an error (message printed in the terminal).
@@ -386,6 +387,8 @@ Every black belt has fallen a thousand times. Find your error message in the lef
 | `401`, `authentication` or `invalid x-api-key` | Missing or wrong API key | Check `echo $ANTHROPIC_API_KEY` in the same terminal; re-export it |
 | `Unknown engine "…"` | Typo in `--engine` or `SDLC_ENGINE` | Use one of: auto, cursor, anthropic, codex, gemini, copilot, mock |
 | `Cannot find module '@openai/codex-sdk'` | Optional Codex SDK not installed | `npm i @openai/codex-sdk` in the sdlc-rig folder |
+| `invalid_json_schema` … `'additionalProperties' is required to be supplied and to be false` | An older sdlc-rig that used Rig's own Codex adapter | Update sdlc-rig; its Codex adapter now converts schemas to OpenAI strict mode |
+| `Codex CLI not found` | The standalone binary can't see a Codex CLI | `npm i -g @openai/codex` (or `brew install codex`), or set `SDLC_CODEX_BIN` |
 | `Timed out after 300000ms` | Big diff or slow model | `export SDLC_TIMEOUT_MS=600000`, or review a smaller branch |
 | Report says `diff truncated` | Diff bigger than the limit | Review in smaller pieces, or raise `SDLC_MAX_DIFF_CHARS` (costs more) |
 | Report is all `(mock …)` | You are on the mock engine | Pass `--engine anthropic` or `--engine cursor`, or unset `SDLC_ENGINE` |

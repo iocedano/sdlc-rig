@@ -42,7 +42,8 @@ export async function setupEngine({ engine }: EngineConfig): Promise<void> {
       return configureAgent(anthropicEngine({ maxTokens: 16_000 }));
     }
     case "codex": {
-      const { codexEngine } = await import("rig/engines/codex");
+      // Our adapter, not rig/engines/codex: strict schemas + safe cleanup (see the file header).
+      const { codexEngine } = await import("./engines/codex.ts");
       return configureAgent(codexEngine());
     }
     case "gemini": {

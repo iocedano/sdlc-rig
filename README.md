@@ -56,7 +56,7 @@ Pick with `--engine` or `SDLC_ENGINE`; model with `--model` or `SDLC_MODEL`.
 |---|---|---|
 | `cursor` | `agent login` or `CURSOR_API_KEY` | Custom adapter (`src/engines/cursor.ts`) over the Cursor CLI in headless JSON mode. Read-only (no `--force`). Extra flags via `CURSOR_AGENT_ARGS`, binary via `CURSOR_AGENT_BIN` (`cursor-agent` on older installs). |
 | `anthropic` | `ANTHROPIC_API_KEY` | Default model `claude-sonnet-5-5`. |
-| `codex` | `OPENAI_API_KEY` / Codex login | Uses `@openai/codex-sdk`. |
+| `codex` | `codex login`, `CODEX_API_KEY` or `OPENAI_API_KEY` | Custom adapter (`src/engines/codex.ts`) over `@openai/codex-sdk`: converts output schemas to OpenAI strict mode and runs read-only. The standalone binary uses a `codex` CLI on PATH; override with `SDLC_CODEX_BIN`. |
 | `gemini` | Gemini CLI login | Requires the `gemini` CLI. |
 | `copilot` | Copilot SDK server | Rig's native engine. |
 | `auto` | — | Rig's own env-based selection. |
