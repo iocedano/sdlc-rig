@@ -18,6 +18,7 @@ import {
   runTests,
   scanDiffForSecrets,
 } from "./context.ts";
+import { loadProjectEnv } from "./dotenv.ts";
 import { EMBEDDED_TEMPLATES } from "./embedded-templates.ts";
 import { ENGINES, resolveEngineConfig, setupEngine } from "./engine.ts";
 import { renderPlan, renderRelease, renderReview, renderSecurity, renderStories, renderTests } from "./render.ts";
@@ -42,6 +43,8 @@ Options
   --model <id>                      default: $SDLC_MODEL or per-engine default
   --out <dir>                       report directory (default .sdlc/reports)
   --json                            print JSON instead of Markdown
+  --dotenv <path>                   load settings from this file instead of the project's .env
+  --no-dotenv                       don't read .env files
   --fail-on <none|critical|high|medium>
                                     exit 1 when findings reach this level or tests fail (default none)
 `;
@@ -67,7 +70,9 @@ async function main() {
       cmd: { type: "string" },
       from: { type: "string" },
       version: { type: "string" },
-      compliance: { type: "string", default: process.env["SDLC_COMPLIANCE"] ?? "" },
+      compliance: { type: "string" },
+      "dotenv": { type: "string" },
+      "no-dotenv": { type: "boolean", default: false },
       "fail-on": { type: "string", default: "none" },
       force: { type: "boolean", default: false },
       help: { type: "boolean", short: "h", default: false },
@@ -79,6 +84,16 @@ async function main() {
     return;
   }
   if (command === "init") return init(values.force);
+
+  // Before anything reads settings: pull sdlc keys from the project's .env.
+  if (!values["no-dotenv"]) {
+    const env = loadProjectEnv({ envFile: values["dotenv"] });
+    if (env.files.length) {
+      const where = env.files.map((f) => relative(process.cwd(), f) || f).join(", ");
+      log(`env: ${env.loaded.length ? env.loaded.join(", ") : "nothing new"} from ${where}${env.skipped ? ` (${env.skipped} non-sdlc keys ignored)` : ""}`);
+    }
+  }
+  values.compliance ??= process.env["SDLC_COMPLIANCE"] ?? "";
 
   const failOn = values["fail-on"]!;
   if (!(failOn in THRESHOLD)) throw new Error(`--fail-on must be one of ${Object.keys(THRESHOLD).join(", ")}`);

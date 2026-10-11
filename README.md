@@ -98,6 +98,10 @@ The workflow assumes `sdlc-rig` is a devDependency of the project (`npm i -D git
 | `SDLC_MAX_DIFF_CHARS` | `120000` | Diff truncation limit |
 | `SDLC_TIMEOUT_MS` | `300000` | Per-agent timeout |
 | `RIG_DEBUG` | — | Rig's JSONL debug logs, e.g. `RIG_DEBUG=agent` |
+| `SDLC_NO_DOTENV` | — | `1` disables `.env` loading |
+| `SDLC_DOTENV_ALL` | — | `1` loads every `.env` key, not only sdlc ones |
+
+Settings and API keys can also live in the project's `.env` (and `.env.local`, which overrides it). sdlc looks in the current folder and its parents up to the git root, loads only sdlc-related keys (`SDLC_*`, `ANTHROPIC_*`, `OPENAI_*`, `CODEX_*`, `CURSOR_*`, `GEMINI_*`, `COPILOT_*`, `RIG_*`, `GOOGLE_API_KEY`, `GITHUB_TOKEN`) so app settings don't leak into your test run, and never overrides variables already set in the shell. Use `--dotenv <file>` for another file or `--no-dotenv` to skip it.
 
 ## Project layout
 

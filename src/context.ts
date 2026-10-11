@@ -14,7 +14,10 @@ const execFileAsync = promisify(execFile);
 const MAX_BUFFER = 64 * 1024 * 1024;
 
 export const LIMITS = {
-  diff: Number(process.env["SDLC_MAX_DIFF_CHARS"] ?? 120_000),
+  // Read on use so a value from the project's .env (loaded after import) applies.
+  get diff() {
+    return Number(process.env["SDLC_MAX_DIFF_CHARS"] ?? 120_000);
+  },
   file: 20_000,
   testOutput: 15_000,
   tree: 400,

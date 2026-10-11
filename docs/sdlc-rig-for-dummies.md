@@ -124,12 +124,33 @@ Start with `mock` to practice for free, then pick one real engine. Cursor users:
 2. Environment variables: `export SDLC_ENGINE=anthropic` and optionally `export SDLC_MODEL=claude-sonnet-5-5`
 3. Nothing set: Rig picks automatically from the API keys it finds.
 
-**Keep your settings in one place.** sdlc-rig reads environment variables, not a `.env` file. Two easy habits:
+**Keep your settings in one place: the project's `.env`.** sdlc reads a `.env` file at the root of your project, so each project can have its own engine and keys:
 
-- Add the `export` lines to your `~/.zshrc` or `~/.bashrc`, then open a new terminal.
-- Or use [direnv](https://direnv.net/): put the exports in an `.envrc` file per project and run `direnv allow`.
+```bash
+# .env (in your project, next to package.json / go.mod)
+SDLC_ENGINE=codex
+SDLC_MODEL=gpt-5.5
+SDLC_COMPLIANCE=HIPAA
+OPENAI_API_KEY=sk-...
+```
 
-> Sensei warning: an API key is like the key to your house. Never commit it to git, never paste it into a ticket, and add `.envrc` and `.env` to `.gitignore`. If one leaks, revoke it in the provider's dashboard right away.
+Run any command and the first line tells you what it picked up:
+
+```text
+[sdlc] env: SDLC_ENGINE, SDLC_MODEL, SDLC_COMPLIANCE, OPENAI_API_KEY from .env (2 non-sdlc keys ignored)
+```
+
+The rules, so nothing surprises you:
+
+- **Only sdlc keys are loaded:** names starting with `SDLC_`, `ANTHROPIC_`, `OPENAI_`, `CODEX_`, `CURSOR_`, `GEMINI_`, `COPILOT_` or `RIG_`, plus `GOOGLE_API_KEY` and `GITHUB_TOKEN`. Your app's own keys (`DATABASE_URL`, `NODE_ENV`, …) stay out, because sdlc passes its environment to your test command and could change how your tests behave. To load everything anyway, set `SDLC_DOTENV_ALL=1`.
+- **Your shell wins.** A variable already exported in the terminal beats the file, so `SDLC_ENGINE=mock sdlc review` still works for a quick override.
+- **`.env.local` beats `.env`.** Keep shared settings in `.env` and personal keys in `.env.local`.
+- **It finds the file from subfolders.** sdlc looks in the current folder, then each parent up to the git root.
+- **Other files:** `--dotenv ci.env` loads a specific file instead; `--no-dotenv` (or `SDLC_NO_DOTENV=1`) turns it off.
+
+Prefer global settings for every project? Put `export` lines in your `~/.zshrc` or `~/.bashrc` instead, or use [direnv](https://direnv.net/).
+
+> Sensei warning: an API key is like the key to your house. Never commit it to git, never paste it into a ticket, and add `.env`, `.env.local` and `.envrc` to `.gitignore` before you put a key in them. If one leaks, revoke it in the provider's dashboard right away.
 
 ## 5. Your first kata: a practice run
 
@@ -354,7 +375,7 @@ Print this page or pin it next to your monitor.
 | `sdlc pr` | `--base`, `--cmd`, `--compliance` | `pr.md` / `.json` |
 | `sdlc init` | `--force` | Adds `.cursor/` and `.github/` files |
 
-**Options for every command:** `--engine <name>`, `--model <id>`, `--out <dir>` (default `.sdlc/reports`), `--json`, `--fail-on <none|critical|high|medium>`, `-h` / `--help`.
+**Options for every command:** `--engine <name>`, `--model <id>`, `--out <dir>` (default `.sdlc/reports`), `--json`, `--fail-on <none|critical|high|medium>`, `--dotenv <path>`, `--no-dotenv`, `-h` / `--help`.
 
 **Environment variables**
 
@@ -370,6 +391,10 @@ Print this page or pin it next to your monitor.
 | `CURSOR_AGENT_ARGS` | Empty | Extra Cursor CLI flags, e.g. `--trust` |
 | `SDLC_CODEX_BIN` | Bundled CLI, then `codex` on PATH | Path to the Codex CLI |
 | `RIG_DEBUG` | Off | Debug logs, e.g. `RIG_DEBUG=agent` |
+| `SDLC_NO_DOTENV` | Off | `1` = don't read the project's `.env` |
+| `SDLC_DOTENV_ALL` | Off | `1` = load every key from `.env`, not only sdlc keys |
+
+All of these can live in your project's `.env` (section 4).
 
 **Exit codes:** `0` success, `1` the `--fail-on` gate was reached, `2` an error (message printed in the terminal).
 
@@ -388,6 +413,7 @@ Every black belt has fallen a thousand times. Find your error message in the lef
 | `Unknown engine "…"` | Typo in `--engine` or `SDLC_ENGINE` | Use one of: auto, cursor, anthropic, codex, gemini, copilot, mock |
 | `Cannot find module '@openai/codex-sdk'` | Optional Codex SDK not installed | `npm i @openai/codex-sdk` in the sdlc-rig folder |
 | `invalid_json_schema` … `'additionalProperties' is required to be supplied and to be false` | An older sdlc-rig that used Rig's own Codex adapter | Update sdlc-rig; its Codex adapter now converts schemas to OpenAI strict mode |
+| A key in `.env` is ignored | Its name isn't an sdlc key, or the same variable is already set in your shell | Check the `[sdlc] env:` line; `unset` the shell variable, or set `SDLC_DOTENV_ALL=1` |
 | `Codex CLI not found` | The standalone binary can't see a Codex CLI | `npm i -g @openai/codex` (or `brew install codex`), or set `SDLC_CODEX_BIN` |
 | `Timed out after 300000ms` | Big diff or slow model | `export SDLC_TIMEOUT_MS=600000`, or review a smaller branch |
 | Report says `diff truncated` | Diff bigger than the limit | Review in smaller pieces, or raise `SDLC_MAX_DIFF_CHARS` (costs more) |
