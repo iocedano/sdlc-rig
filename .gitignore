@@ -1,3 +1,4 @@
 node_modules/
 .sdlc/
 dist/
+.DS_Store
