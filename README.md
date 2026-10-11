@@ -8,7 +8,7 @@ idea ──► stories ──► plan ──► (code) ──► review ─┐
                                          security┘
 ```
 
-> New here? Start with the step-by-step [beginner guide](docs/GUIDE.md).
+> New here? Start with the step-by-step [beginner guide](docs/sdlc-rig-for-dummies.md).
 
 | Command | What it does | Report |
 |---|---|---|
