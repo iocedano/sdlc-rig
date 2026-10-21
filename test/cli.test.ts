@@ -152,3 +152,15 @@ test("init writes .cursor/mcp.json for Cursor", async () => {
   const config = JSON.parse(await readFile(join(dir, ".cursor/mcp.json"), "utf8"));
   assert.ok(config.mcpServers.sdlc);
 });
+
+test("init --tool all installs every template file, so none is orphaned", async () => {
+  const { readdirSync, statSync } = await import("node:fs");
+  const dir = await mkdtemp(join(tmpdir(), "sdlc-init-"));
+  assert.equal(init(dir, "--tool", "all").status, 0);
+  const templates = resolve("templates");
+  const files = readdirSync(templates, { recursive: true }).map(String).filter((f) => statSync(join(templates, f)).isFile());
+  assert.ok(files.length >= 20, `found ${files.length} templates`);
+  for (const f of files) {
+    assert.ok(existsSync(join(dir, f)), f);
+  }
+});

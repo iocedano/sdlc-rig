@@ -9,6 +9,7 @@
   "scripts": {
     "sdlc": "tsx src/cli.ts",
     "typecheck": "tsc --noEmit",
+    "bun:install": "npx bun install",
     "test": "node --import tsx --test test/*.test.ts",
     "build:binary": "npx bun scripts/build-binary.ts",
     "build:binary:all": "npx bun scripts/build-binary.ts --all",
