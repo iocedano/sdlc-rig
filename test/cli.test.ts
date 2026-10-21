@@ -133,3 +133,22 @@ test("secrets in added lines are detected and redacted", () => {
   assert.deepEqual(scanDiffForSecrets(diff), ["AWS access key in config.js: AKIA…[redacted]"]);
   assert.ok(!redactSecrets(diff).includes("ABCDEFGHIJKLMNOP"));
 });
+
+test("init --tool claude adds the sdlc MCP server and keeps the user's other servers", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "sdlc-init-"));
+  await writeFile(join(dir, ".mcp.json"), JSON.stringify({ mcpServers: { docs: { command: "docs-mcp" } } }));
+  assert.equal(init(dir, "--tool", "claude").status, 0);
+  const config = JSON.parse(await readFile(join(dir, ".mcp.json"), "utf8"));
+  assert.deepEqual(config.mcpServers.docs, { command: "docs-mcp" });
+  assert.deepEqual(config.mcpServers.sdlc, { command: "npx", args: ["sdlc", "mcp"] });
+
+  const again = init(dir, "--tool", "claude");
+  assert.match(again.stderr, /up to date \.mcp\.json/);
+});
+
+test("init writes .cursor/mcp.json for Cursor", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "sdlc-init-"));
+  assert.equal(init(dir).status, 0);
+  const config = JSON.parse(await readFile(join(dir, ".cursor/mcp.json"), "utf8"));
+  assert.ok(config.mcpServers.sdlc);
+});

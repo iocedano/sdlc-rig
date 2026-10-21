@@ -88,6 +88,28 @@ Configure in the repo settings:
 
 The workflow assumes `sdlc-rig` is a devDependency of the project (`npm i -D github:<you>/sdlc-rig`).
 
+## Using it in Claude Code, Cursor and Codex (MCP)
+
+`sdlc mcp` serves every stage (`sdlc_stories`, `sdlc_plan`, `sdlc_review`, `sdlc_test`, `sdlc_security`, `sdlc_release`, `sdlc_pr`) as MCP tools over stdio. Each tool runs the CLI with `--json`, so the output matches the terminal.
+
+```bash
+cd your-project && npm i -D github:<you>/sdlc-rig && npx sdlc init --tool all
+```
+
+`init` writes the server entry to `.mcp.json` (Claude Code) and `.cursor/mcp.json` (Cursor), keeping any other servers in those files. For Codex, add this to `~/.codex/config.toml`, since it is a user-level file:
+
+```toml
+[mcp_servers.sdlc]
+command = "npx"
+args = ["sdlc", "mcp"]
+```
+
+Notes:
+
+- The `sdlc_test` tool does not accept a test command. An MCP client cannot choose what gets executed; set `SDLC_TEST_CMD` in the project instead.
+- Tools can run for minutes. Some clients time out long tool calls, so use the CLI or CI for `sdlc_pr` on large diffs.
+- The server runs in the directory the client starts it from, which must be the project root.
+
 ## Configuration
 
 | Env var | Default | Purpose |

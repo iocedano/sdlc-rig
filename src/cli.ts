@@ -36,8 +36,9 @@ Commands
   security [--base main] [--compliance HIPAA,PCI]
                                      Secure code review (secrets, deps, OWASP, compliance)
   pr       [--base main]             review + test + security in parallel (for CI)
-  init     [--force] [--tool <t>]    Add agent commands/rules and a GitHub Actions workflow to this repo
+  init     [--force] [--tool <t>]    Add agent commands/rules, MCP config and a GitHub Actions workflow
                                      --tool cursor (default) | claude | codex | all
+  mcp                                Serve the stages as MCP tools over stdio (for Claude Code, Cursor, Codex)
 
 Options
   --engine <${ENGINES.join("|")}>   default: $SDLC_ENGINE or auto
@@ -86,6 +87,10 @@ async function main() {
     return;
   }
   if (command === "init") return init(values.force, values.tool!);
+  if (command === "mcp") {
+    const { serveMcp } = await import("./mcp.ts");
+    return serveMcp();
+  }
 
   // Before anything reads settings: pull sdlc keys from the project's .env.
   if (!values["no-dotenv"]) {
@@ -232,7 +237,7 @@ const BLOCK_END = "<!-- sdlc:end -->";
 function toolFor(rel: string): "cursor" | "claude" | "codex" | "shared" {
   const p = rel.replace(/\\/g, "/");
   if (p.startsWith(".cursor/")) return "cursor";
-  if (p.startsWith(".claude/") || p === "CLAUDE.md") return "claude";
+  if (p.startsWith(".claude/") || p === "CLAUDE.md" || p === ".mcp.json") return "claude";
   if (p.startsWith(".codex/") || p === "AGENTS.md") return "codex";
   return "shared";
 }
@@ -245,6 +250,14 @@ function mergeManagedBlock(existing: string | undefined, template: string): stri
   const e = existing.indexOf(BLOCK_END);
   if (s !== -1 && e > s) return existing.slice(0, s) + block + existing.slice(e + BLOCK_END.length);
   return `${existing.trimEnd()}\n\n${block}\n`;
+}
+
+// .mcp.json and .cursor/mcp.json may hold the user's other servers: only the sdlc entry is set.
+function mergeMcpConfig(existing: string | undefined, template: string): string {
+  const wanted = JSON.parse(template) as { mcpServers: Record<string, unknown> };
+  const base = existing === undefined ? {} : (JSON.parse(existing) as { mcpServers?: Record<string, unknown> });
+  const merged = { ...base, mcpServers: { ...(base.mcpServers ?? {}), ...wanted.mcpServers } };
+  return `${JSON.stringify(merged, null, 2)}\n`;
 }
 
 async function init(force = false, tool = "cursor") {
@@ -261,6 +274,22 @@ async function init(force = false, tool = "cursor") {
     const owner = toolFor(rel);
     if (tool !== "all" && owner !== "shared" && owner !== tool) continue;
     const dest = join(process.cwd(), rel);
+    if (rel.replace(/\\/g, "/").endsWith("mcp.json")) {
+      const existing = existsSync(dest) ? await readFile(dest, "utf8") : undefined;
+      try {
+        const merged = mergeMcpConfig(existing, content);
+        if (merged === existing) {
+          log(`up to date ${rel}`);
+          continue;
+        }
+        await mkdir(dirname(dest), { recursive: true });
+        await writeFile(dest, merged);
+        log(`${existing === undefined ? "added" : "updated sdlc server in"} ${rel}`);
+      } catch {
+        log(`skip ${rel} (not valid JSON; fix it and run init again)`);
+      }
+      continue;
+    }
     if (content.includes(BLOCK_START)) {
       const existing = existsSync(dest) ? await readFile(dest, "utf8") : undefined;
       const merged = mergeManagedBlock(existing, content);
