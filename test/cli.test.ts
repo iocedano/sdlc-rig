@@ -63,6 +63,71 @@ test("init installs Cursor commands and the workflow", async () => {
   }
 });
 
+const init = (dir: string, ...args: string[]) =>
+  spawnSync(process.execPath, [BIN, "init", ...args], { cwd: dir, encoding: "utf8" });
+
+test("init with no flag stays Cursor-only", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "sdlc-init-"));
+  assert.equal(init(dir).status, 0);
+  assert.ok(!existsSync(join(dir, ".claude")));
+  assert.ok(!existsSync(join(dir, "AGENTS.md")));
+  assert.ok(!existsSync(join(dir, "CLAUDE.md")));
+});
+
+test("init --tool claude installs Claude commands, CLAUDE.md and the workflow only", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "sdlc-init-"));
+  const res = init(dir, "--tool", "claude");
+  assert.equal(res.status, 0, res.stderr);
+  for (const f of [".claude/sdlc.md", ".claude/commands/sdlc-review.md", "CLAUDE.md", ".github/workflows/sdlc.yml"]) {
+    assert.ok(existsSync(join(dir, f)), f);
+  }
+  assert.ok(!existsSync(join(dir, ".cursor")));
+  assert.ok(!existsSync(join(dir, "AGENTS.md")));
+});
+
+test("init --tool codex installs AGENTS.md only", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "sdlc-init-"));
+  assert.equal(init(dir, "--tool", "codex").status, 0);
+  assert.ok(existsSync(join(dir, "AGENTS.md")));
+  assert.ok(!existsSync(join(dir, ".claude")));
+  assert.ok(!existsSync(join(dir, ".cursor")));
+});
+
+test("init --tool all installs every agent's files", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "sdlc-init-"));
+  assert.equal(init(dir, "--tool", "all").status, 0);
+  for (const f of [".cursor/rules/sdlc.mdc", ".claude/sdlc.md", "CLAUDE.md", "AGENTS.md"]) {
+    assert.ok(existsSync(join(dir, f)), f);
+  }
+});
+
+test("init rejects an unknown --tool", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "sdlc-init-"));
+  assert.notEqual(init(dir, "--tool", "vim").status, 0);
+});
+
+test("managed blocks keep the user's notes and are idempotent", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "sdlc-init-"));
+  await writeFile(join(dir, "AGENTS.md"), "# Team rules\n\nUse pnpm.\n");
+  assert.equal(init(dir, "--tool", "codex").status, 0);
+  const first = await readFile(join(dir, "AGENTS.md"), "utf8");
+  assert.ok(first.startsWith("# Team rules\n\nUse pnpm."), first);
+  assert.equal(first.split("<!-- sdlc:start -->").length - 1, 1);
+
+  const again = init(dir, "--tool", "codex", "--force");
+  assert.match(again.stderr, /up to date AGENTS.md/);
+  assert.equal(await readFile(join(dir, "AGENTS.md"), "utf8"), first);
+});
+
+test("Claude commands do not pin an engine", async () => {
+  const dir = resolve("templates/.claude/commands");
+  const { readdirSync } = await import("node:fs");
+  for (const f of readdirSync(dir)) {
+    const text = await readFile(join(dir, f), "utf8");
+    assert.ok(!text.includes("--engine"), f);
+  }
+});
+
 test("secrets in added lines are detected and redacted", () => {
   const diff = "+++ b/config.js\n+const key = 'AKIAABCDEFGHIJKLMNOP';\n-const old = 'AKIAZZZZZZZZZZZZZZZZ';";
   assert.deepEqual(scanDiffForSecrets(diff), ["AWS access key in config.js: AKIA…[redacted]"]);

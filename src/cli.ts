@@ -36,7 +36,8 @@ Commands
   security [--base main] [--compliance HIPAA,PCI]
                                      Secure code review (secrets, deps, OWASP, compliance)
   pr       [--base main]             review + test + security in parallel (for CI)
-  init     [--force]                 Add Cursor commands/rules and a GitHub Actions workflow to this repo
+  init     [--force] [--tool <t>]    Add agent commands/rules and a GitHub Actions workflow to this repo
+                                     --tool cursor (default) | claude | codex | all
 
 Options
   --engine <${ENGINES.join("|")}>   default: $SDLC_ENGINE or auto
@@ -75,6 +76,7 @@ async function main() {
       "no-dotenv": { type: "boolean", default: false },
       "fail-on": { type: "string", default: "none" },
       force: { type: "boolean", default: false },
+      tool: { type: "string", default: "cursor" },
       help: { type: "boolean", short: "h", default: false },
     },
   });
@@ -83,7 +85,7 @@ async function main() {
     process.stdout.write(HELP);
     return;
   }
-  if (command === "init") return init(values.force);
+  if (command === "init") return init(values.force, values.tool!);
 
   // Before anything reads settings: pull sdlc keys from the project's .env.
   if (!values["no-dotenv"]) {
@@ -222,7 +224,31 @@ async function main() {
   process.exitCode = exitCode;
 }
 
-async function init(force = false) {
+const INIT_TOOLS = ["cursor", "claude", "codex", "all"];
+const BLOCK_START = "<!-- sdlc:start -->";
+const BLOCK_END = "<!-- sdlc:end -->";
+
+// Which agent a template belongs to. "shared" files (the GitHub workflow) install for every choice.
+function toolFor(rel: string): "cursor" | "claude" | "codex" | "shared" {
+  const p = rel.replace(/\\/g, "/");
+  if (p.startsWith(".cursor/")) return "cursor";
+  if (p.startsWith(".claude/") || p === "CLAUDE.md") return "claude";
+  if (p.startsWith(".codex/") || p === "AGENTS.md") return "codex";
+  return "shared";
+}
+
+// AGENTS.md and CLAUDE.md are shared with the user's own notes: only the sdlc block is owned by sdlc.
+function mergeManagedBlock(existing: string | undefined, template: string): string {
+  const block = template.slice(template.indexOf(BLOCK_START), template.indexOf(BLOCK_END) + BLOCK_END.length);
+  if (existing === undefined) return template;
+  const s = existing.indexOf(BLOCK_START);
+  const e = existing.indexOf(BLOCK_END);
+  if (s !== -1 && e > s) return existing.slice(0, s) + block + existing.slice(e + BLOCK_END.length);
+  return `${existing.trimEnd()}\n\n${block}\n`;
+}
+
+async function init(force = false, tool = "cursor") {
+  if (!INIT_TOOLS.includes(tool)) throw new Error(`--tool must be one of ${INIT_TOOLS.join(", ")}`);
   // Standalone binary: templates are embedded. From source: read ./templates.
   let files = Object.entries(EMBEDDED_TEMPLATES);
   if (files.length === 0) {
@@ -232,7 +258,21 @@ async function init(force = false) {
     );
   }
   for (const [rel, content] of files) {
+    const owner = toolFor(rel);
+    if (tool !== "all" && owner !== "shared" && owner !== tool) continue;
     const dest = join(process.cwd(), rel);
+    if (content.includes(BLOCK_START)) {
+      const existing = existsSync(dest) ? await readFile(dest, "utf8") : undefined;
+      const merged = mergeManagedBlock(existing, content);
+      if (merged === existing) {
+        log(`up to date ${rel}`);
+        continue;
+      }
+      await mkdir(dirname(dest), { recursive: true });
+      await writeFile(dest, merged);
+      log(`${existing === undefined ? "added" : "updated sdlc block in"} ${rel}`);
+      continue;
+    }
     if (existsSync(dest) && !force) {
       log(`skip ${rel} (exists; use --force)`);
       continue;
@@ -240,6 +280,12 @@ async function init(force = false) {
     await mkdir(dirname(dest), { recursive: true });
     await writeFile(dest, content);
     log(`added ${rel}`);
+  }
+  if ((tool === "claude" || tool === "all") && !process.env["ANTHROPIC_API_KEY"]) {
+    log("note: sdlc calls the Anthropic API itself; set ANTHROPIC_API_KEY (a Claude Code login does not cover it)");
+  }
+  if ((tool === "codex" || tool === "all") && !process.env["OPENAI_API_KEY"] && !process.env["CODEX_API_KEY"]) {
+    log("note: Codex needs `codex login`, or OPENAI_API_KEY / CODEX_API_KEY");
   }
   log("done. Add .sdlc/ to .gitignore if you don't want reports committed.");
 }
