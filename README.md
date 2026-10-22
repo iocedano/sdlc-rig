@@ -19,7 +19,8 @@ idea ──► stories ──► plan ──► (code) ──► review ─┐
 | `sdlc security [--compliance HIPAA,PCI]` | Secret scan, dependency audit, optional semgrep/gitleaks, OWASP/CWE review, compliance notes | `security.md/json` |
 | `sdlc release [--from v1.2.0]` | SemVer bump + user-facing release notes since the last tag | `release.md/json` |
 | `sdlc pr --base main` | review + test + security in parallel, one combined report | `pr.md/json` |
-| `sdlc init` | Adds Cursor commands/rules and the GitHub Actions workflow to the current repo | — |
+| `sdlc init [--tool cursor\|claude\|codex\|all]` | Adds agent commands, rules and MCP config for the chosen tool (default `cursor`), plus the GitHub Actions workflow | — |
+| `sdlc mcp` | Serves every stage as MCP tools over stdio, for Claude Code, Cursor and Codex | — |
 
 Reports go to `.sdlc/reports/` (change with `--out`). `--json` prints JSON; `--fail-on critical|high|medium` exits 1 for CI gating.
 
@@ -62,6 +63,8 @@ Pick with `--engine` or `SDLC_ENGINE`; model with `--model` or `SDLC_MODEL`.
 | `auto` | — | Rig's own env-based selection. |
 | `mock` | — | Schema-valid placeholders, for wiring and tests. |
 
+Pick the engine that matches your client: `cursor` for Cursor, `anthropic` for Claude Code, `codex` for Codex. The Cursor commands pass `--engine cursor`; the Claude Code and Codex commands leave the choice to `SDLC_ENGINE`.
+
 All context (diffs, test output, file tree, scanner output) is gathered deterministically in Node and passed as typed input, so every engine sees the same data — including plain API engines without shell access. Secrets found in the diff are redacted before anything is sent to a model.
 
 ## Using it in Cursor
@@ -77,6 +80,32 @@ This adds:
 
 You need the Cursor CLI installed and logged in (`curl https://cursor.com/install -fsS | bash`, then `agent login`). If headless runs prompt for workspace trust, set `CURSOR_AGENT_ARGS="--trust"`.
 
+`init` also writes `.cursor/mcp.json`, which registers the `sdlc` MCP server (see below).
+
+## Using it in Claude Code
+
+```bash
+cd your-project && npx sdlc init --tool claude
+```
+
+This adds:
+
+- **Slash commands** in `.claude/commands/`: `/sdlc-stories`, `/sdlc-plan`, `/sdlc-review`, `/sdlc-test`, `/sdlc-security`, `/sdlc-release`, `/sdlc-pr`. Text you type after a command is passed in as the input, for example `/sdlc-plan "CSV export for invoices"`. Each command runs the CLI, opens the report, and proposes fixes for your approval.
+- **`.claude/sdlc.md`**, the workflow reference. `CLAUDE.md` imports it. If you already have a `CLAUDE.md`, your content stays; only the `sdlc-rig` block is added or updated.
+- **`.mcp.json`**, which registers the `sdlc` MCP server. Other servers in the file are kept.
+
+The sdlc agents call the Anthropic API themselves, so set `ANTHROPIC_API_KEY`. A Claude Code login does not cover this. Set `SDLC_ENGINE=anthropic` to make the choice explicit.
+
+## Using it in Codex
+
+```bash
+cd your-project && npx sdlc init --tool codex
+```
+
+This adds an `sdlc-rig` block to `AGENTS.md`, which Codex reads for project instructions. It lists the commands to run and when to use them. Your own `AGENTS.md` content is kept.
+
+Set `SDLC_ENGINE=codex` and run `codex login` or set `OPENAI_API_KEY`. Codex has no slash-command template here, so ask for a step in plain words, such as "run the sdlc review and summarize blocker findings". To use the tools rather than the shell, register the MCP server as shown below.
+
 ## Using it in CI
 
 `sdlc init` also adds `.github/workflows/sdlc.yml`, which on every PR runs `sdlc pr`, posts/updates one PR comment with the report, uploads the reports as an artifact, and fails the check on critical findings or failing tests.
@@ -87,6 +116,28 @@ Configure in the repo settings:
 - Secret `ANTHROPIC_API_KEY` or `CURSOR_API_KEY` to match.
 
 The workflow assumes `sdlc-rig` is a devDependency of the project (`npm i -D github:<you>/sdlc-rig`).
+
+## MCP server (any client)
+
+`sdlc mcp` serves every stage (`sdlc_stories`, `sdlc_plan`, `sdlc_review`, `sdlc_test`, `sdlc_security`, `sdlc_release`, `sdlc_pr`) as MCP tools over stdio. Each tool runs the CLI with `--json`, so the output matches the terminal.
+
+```bash
+cd your-project && npm i -D github:<you>/sdlc-rig && npx sdlc init --tool all
+```
+
+`init` writes the server entry to `.mcp.json` (Claude Code) and `.cursor/mcp.json` (Cursor), keeping any other servers in those files. For Codex, add this to `~/.codex/config.toml`, since it is a user-level file:
+
+```toml
+[mcp_servers.sdlc]
+command = "npx"
+args = ["sdlc", "mcp"]
+```
+
+Notes:
+
+- The `sdlc_test` tool does not accept a test command. An MCP client cannot choose what gets executed; set `SDLC_TEST_CMD` in the project instead.
+- Tools can run for minutes. Some clients time out long tool calls, so use the CLI or CI for `sdlc_pr` on large diffs.
+- The server runs in the directory the client starts it from, which must be the project root.
 
 ## Configuration
 
@@ -114,7 +165,8 @@ src/
   engines/cursor.ts  Rig AgentFactory for the Cursor CLI
   engines/mock.ts    offline engine
   cli.ts           commands, report writing, CI gating
-templates/         files copied by `sdlc init` (.cursor/, .github/)
+  mcp.ts           MCP server (`sdlc mcp`): one tool per stage, each running the CLI with --json
+templates/         files copied by `sdlc init`: .cursor/, .claude/, AGENTS.md, CLAUDE.md, .mcp.json, .github/
 test/              node:test suite (runs offline with the mock engine)
 ```
 
