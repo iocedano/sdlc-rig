@@ -138,7 +138,7 @@ export function runTests(command: string | undefined, cwd = process.cwd()): Prom
 
 // ---------- security signals ----------
 
-const SECRET_PATTERNS: Array<[string, RegExp]> = [
+export const SECRET_PATTERNS: Array<[string, RegExp]> = [
   ["AWS access key", /AKIA[0-9A-Z]{16}/],
   ["GitHub token", /gh[pousr]_[A-Za-z0-9]{36,}/],
   ["Slack token", /xox[baprs]-[A-Za-z0-9-]{10,}/],

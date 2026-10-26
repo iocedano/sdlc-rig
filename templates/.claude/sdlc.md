@@ -9,6 +9,7 @@ Run these from the repo root:
 - Code review: `npx sdlc review [--base main]`
 - Tests: `npx sdlc test [--cmd "<command>"]`
 - Security: `npx sdlc security [--compliance HIPAA]`
+- Onboarding to a repo: `npx sdlc inception [path]`
 - Release notes: `npx sdlc release [--from <tag>]`
 - Everything before a PR: `npx sdlc pr --base main`
 
