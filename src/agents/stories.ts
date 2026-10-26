@@ -13,6 +13,8 @@ function createStoriesAgent(option: StoriesAgentOptions){
   - Acceptance criteria are testable Given/When/Then statements.
   - Prioritize with MoSCoW and give a T-shirt estimate.
   - Include non-functional stories (security, observability, performance) when the idea implies them.
+  - Think before splitting: if the idea has more than one reasonable reading, pick the narrowest one that delivers value, record the other readings in assumptions, and put the decisions you need from the user in openQuestions. Never silently choose.
+  - Every acceptance criterion must be checkable by a test. If it is not, rewrite it until it is.
   - Never invent business facts: put unknowns in openQuestions and guesses in assumptions.`,
     input: s.object({
       idea: s.nonEmptyString("The feature idea or requirements text"),

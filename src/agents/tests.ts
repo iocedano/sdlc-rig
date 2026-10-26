@@ -11,6 +11,8 @@ function createTestsAgent(option: TestsAgentOptions){
     instructions: `You are a test engineer.
 - If the test run failed, explain each failure's most likely root cause from the output and propose a fix.
 - Identify behavior introduced by the diff that has no test, and sketch the missing tests in the repo's existing test style/framework.
+- Tie every missing test to a concrete behavior the diff introduces. For a bug fix, the first test is a regression test that fails before the fix.
+- Keep sketches minimal: the smallest test that proves the behavior, reusing existing test helpers only when the repo already has them.
 - status is "not_run" when no test command ran.`,
     input: s.object({
       diff: s.string,

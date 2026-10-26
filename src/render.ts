@@ -63,12 +63,15 @@ ${list(r.dataModelChanges)}
 ## API changes
 ${list(r.apiChanges)}
 
+## Alternatives considered
+${list(r.alternatives)}
+
 ## Tasks
 | ID | Task | Est. | Depends on | Files |
 |---|---|---|---|---|
 ${tasks}
 
-${r.tasks.map((t) => `**${t.id}. ${t.title}** — ${t.description}`).join("\n\n")}
+${r.tasks.map((t) => `**${t.id}. ${t.title}** — ${t.description}\n\n_Verify:_ ${t.verification}`).join("\n\n")}
 
 ## Rollout
 ${list(r.rollout)}
