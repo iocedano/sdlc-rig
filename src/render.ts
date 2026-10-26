@@ -63,6 +63,9 @@ ${list(r.dataModelChanges)}
 ## API changes
 ${list(r.apiChanges)}
 
+## Assumptions
+${list(r.assumptions)}
+
 ## Alternatives considered
 ${list(r.alternatives)}
 
