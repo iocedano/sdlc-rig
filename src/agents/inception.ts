@@ -14,6 +14,7 @@ function createInceptionAgent(option: InceptionAgentOptions) {
 - Infer the stack from manifests and key files only. Name the language version, runtime, framework, database connectors and main libraries. Write "unknown" rather than guess.
 - Judge the architecture from the tree and entry points (Monolith, Microservices, Clean/Hexagonal, MVC, Serverless, Monorepo, REST API, ...). Write "unclear" when the evidence is thin.
 - Security: look for auth middleware (JWT, OAuth, sessions), input validation, security headers, CORS and rate limiting. Mark a control "Warn" when you cannot find it. Use "Fail" only for a clear gap for this kind of service.
+- Triage the dependency audit and scanner output: drop false positives and explain real ones.
 - Never print secret values. Refer to them by file and pattern only.
 - Keep it concise and scannable. Keep only high-signal findings, and give each one a concrete remediation.`,
     input: s.object({
@@ -21,6 +22,8 @@ function createInceptionAgent(option: InceptionAgentOptions) {
       facts: s.string("Deterministic facts computed in code, as text"),
       tree: s.string("Tracked or walked file list, capped"),
       keyFiles: s.string("Manifests, configs, README and entry files, truncated and secret-redacted"),
+      dependencyAudit: s.string("npm audit or govulncheck output, or a note that none ran"),
+      scannerOutput: s.string("semgrep and gitleaks output when installed, or a note"),
     }),
     output: s.object({
       stack: s.object({

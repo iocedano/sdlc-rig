@@ -53,10 +53,12 @@ test("MCP server lists the stage tools and runs review with the mock engine", as
     const tools = new Map<string, any>(list.result.tools.map((t: any) => [t.name, t]));
     assert.deepEqual(
       [...tools.keys()].sort(),
-      ["sdlc_plan", "sdlc_pr", "sdlc_release", "sdlc_review", "sdlc_security", "sdlc_stories", "sdlc_test"],
+      ["sdlc_inception", "sdlc_plan", "sdlc_pr", "sdlc_release", "sdlc_review", "sdlc_security", "sdlc_stories", "sdlc_test"],
     );
     // The test command is never an input: an MCP client cannot choose what runs.
     assert.ok(!("cmd" in tools.get("sdlc_test").inputSchema.properties));
+    // Inception analyzes the server's own project; a client must not pick the directory.
+    assert.ok(!("path" in tools.get("sdlc_inception").inputSchema.properties));
 
     const call = await send(3, "tools/call", { name: "sdlc_review", arguments: { engine: "mock" } });
     assert.notEqual(call.result.isError, true, call.result.content?.[0]?.text);

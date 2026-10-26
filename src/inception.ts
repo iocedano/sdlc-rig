@@ -9,7 +9,17 @@
 import { readdir } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import type { InceptionResult } from "./agents.ts";
-import { LIMITS, SECRET_PATTERNS, git, isGitRepo, readOptional, redactSecrets, truncate } from "./context.ts";
+import {
+  LIMITS,
+  SECRET_PATTERNS,
+  dependencyAudit,
+  externalScanners,
+  git,
+  isGitRepo,
+  readOptional,
+  redactSecrets,
+  truncate,
+} from "./context.ts";
 
 const IGNORED_DIRS = new Set([".git", "node_modules", "dist", "build", "venv", ".venv", "__pycache__", "vendor", "target", ".next", "coverage"]);
 const MAX_FILES = 5_000;
@@ -59,6 +69,8 @@ export type InceptionFacts = {
   envExample: string | null;
   entryPoints: string[];
   topDirs: { name: string; files: number }[];
+  // Output of the existing dependency audit and optional scanners (filled by collectInception).
+  audit: { dependencyAudit: string; scanners: string };
 };
 
 export type Finding = { severity: Severity; title: string; file: string | null; detail: string; remediation: string };
@@ -218,6 +230,7 @@ export async function inceptionFacts(root: string): Promise<InceptionFacts> {
     envExample: files.find((f) => ENV_TEMPLATE.test(f)) ?? null,
     entryPoints,
     topDirs,
+    audit: { dependencyAudit: "not run", scanners: "not run" },
   };
 }
 
@@ -240,6 +253,7 @@ function describeFacts(facts: InceptionFacts): string {
 /** Facts plus the model input, collected in Node so the agent sees the same evidence every run. */
 export async function collectInception(root: string) {
   const facts = await inceptionFacts(root);
+  facts.audit = { dependencyAudit: await dependencyAudit(root), scanners: await externalScanners(root) };
   const picks = [
     ...facts.manifests,
     ...facts.entryPoints.slice(0, 5),
@@ -259,6 +273,8 @@ export async function collectInception(root: string) {
       facts: describeFacts(facts),
       tree: facts.files.slice(0, LIMITS.tree).join("\n") + more,
       keyFiles: keyFiles.join("\n\n"),
+      dependencyAudit: facts.audit.dependencyAudit,
+      scannerOutput: facts.audit.scanners,
     },
   };
 }
@@ -320,6 +336,20 @@ export function buildInceptionReport(facts: InceptionFacts, agent: InceptionResu
       file: ".gitignore",
       detail: `Missing rules for: ${facts.gitignore.missing.join(", ")}.`,
       remediation: "Add the missing rules.",
+    });
+  }
+  // npm audit lines look like "high: lodash (<4.17.21) — fix available".
+  for (const line of facts.audit.dependencyAudit.split("\n")) {
+    const m = line.match(/^(critical|high|moderate|low): (\S+) \(([^)]*)\)(.*)$/);
+    if (!m) continue;
+    findings.push({
+      severity: m[1] === "moderate" ? "medium" : (m[1] as Severity),
+      title: `Vulnerable dependency: ${m[2]}`,
+      file: null,
+      detail: `npm audit ${m[1]}: ${m[2]} (${m[3]}).`,
+      remediation: m[4]!.includes("fix available")
+        ? "Upgrade to the patched version, then re-run npm audit."
+        : "No fix available yet: check the advisory, replace the package, or document the accepted risk.",
     });
   }
   for (const f of agent.findings) {

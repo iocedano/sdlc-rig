@@ -65,3 +65,16 @@ test("renders the fixed layout and never echoes a secret value", async () => {
   assert.ok(md.includes("| **Secrets & Hardcoded Keys** | Fail |"));
   assert.ok(!md.includes("IOSFODNN7EXAMPLE"), "secret value must never appear in the report");
 });
+
+test("npm audit results become dependency findings", async () => {
+  const facts = await inceptionFacts(await fixture());
+  facts.audit = {
+    dependencyAudit: "npm audit:\nhigh: lodash (<4.17.21) — fix available\nmoderate: qs (<6.5.3)",
+    scanners: "No external scanners installed.",
+  };
+  const report = buildInceptionReport(facts, EMPTY_AGENT, "demo");
+  const lodash = report.findings.find((f) => f.title === "Vulnerable dependency: lodash");
+  assert.equal(lodash?.severity, "high");
+  assert.ok(lodash?.remediation.includes("patched version"));
+  assert.equal(report.findings.find((f) => f.title === "Vulnerable dependency: qs")?.severity, "medium");
+});
