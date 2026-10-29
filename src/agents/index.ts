@@ -4,6 +4,7 @@ import createReviewAgent from "./review.ts";
 import createReleaseAgent from "./release.ts";
 import createSecurityAgent from "./security.ts";
 import createTestsAgent from "./tests.ts";
+import createInceptionAgent from "./inception.ts";
 
 export function createAgents(model: string) {
   // ---------- 1. Requirements -> user stories ----------
@@ -35,7 +36,12 @@ export function createAgents(model: string) {
     model,
   });
 
-  return { stories, plan, review, tests, release, security };
+  // ---------- 6. Project inception (onboarding + baseline audit, read-only) ----------
+  const inception = createInceptionAgent({
+    model,
+  });
+
+  return { stories, plan, review, tests, release, security, inception };
 }
 
 export type Agents = ReturnType<typeof createAgents>;
@@ -45,3 +51,4 @@ export type ReviewResult = Awaited<ReturnType<Agents["review"]>>;
 export type TestsResult = Awaited<ReturnType<Agents["tests"]>>;
 export type ReleaseResult = Awaited<ReturnType<Agents["release"]>>;
 export type SecurityResult = Awaited<ReturnType<Agents["security"]>>;
+export type InceptionResult = Awaited<ReturnType<Agents["inception"]>>;

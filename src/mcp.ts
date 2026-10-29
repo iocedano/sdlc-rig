@@ -111,6 +111,15 @@ const TOOLS: ToolSpec[] = [
     report: ".sdlc/reports/release.md",
   },
   {
+    // No path input: an MCP client must not choose which directory is read and sent to the model.
+    // It analyzes the project the server runs in.
+    name: "sdlc_inception",
+    description: "Onboarding report for this repository: stack, structure, entry points and a read-only baseline security audit (secrets, .gitignore, env files, dependency audit).",
+    input: { engine: engineField },
+    args: (i) => ["inception", "--json", ...engineArgs(i.engine)],
+    report: ".sdlc/reports/inception.md",
+  },
+  {
     name: "sdlc_pr",
     description: "Review, tests and security in parallel, combined into one go / no-go report for a pull request.",
     input: { base: baseField, engine: engineField },

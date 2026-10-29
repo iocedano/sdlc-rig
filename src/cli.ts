@@ -1,6 +1,6 @@
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { createAgents } from "./agents.ts";
@@ -22,6 +22,7 @@ import { loadProjectEnv } from "./dotenv.ts";
 import { EMBEDDED_TEMPLATES } from "./embedded-templates.ts";
 import { ENGINES, resolveEngineConfig, setupEngine } from "./engine.ts";
 import { renderPlan, renderRelease, renderReview, renderSecurity, renderStories, renderTests } from "./render.ts";
+import { buildInceptionReport, collectInception, renderInception } from "./inception.ts";
 
 const HELP = `sdlc — AI SDLC assistant built on Rig
 
@@ -36,6 +37,7 @@ Commands
   security [--base main] [--compliance HIPAA,PCI]
                                      Secure code review (secrets, deps, OWASP, compliance)
   pr       [--base main]             review + test + security in parallel (for CI)
+  inception [path]                   Onboarding report: stack, structure, baseline security audit (read-only)
   init     [--force] [--tool <t>]    Add agent commands/rules, MCP config and a GitHub Actions workflow
                                      --tool cursor (default) | claude | codex | all
   mcp                                Serve the stages as MCP tools over stdio (for Claude Code, Cursor, Codex)
@@ -220,6 +222,16 @@ async function main() {
       const markdown = `<!-- sdlc-rig-report -->\n# 🤖 SDLC report\n\n${review.markdown}\n---\n\n${tests.markdown}\n---\n\n${security.markdown}`;
       await emit("pr", { review: review.result, tests: tests.result, security: security.result }, markdown);
       gate(Math.max(review.level, security.level), tests.failed);
+      break;
+    }
+    case "inception": {
+      const root = resolve(rest[0] ?? ".");
+      const { facts, input } = await collectInception(root);
+      log(`inception: ${facts.fileCount} files, ${facts.manifests.length} manifests, ${facts.secretHits.length} possible secrets`);
+      const repoName = basename(root);
+      const result = await agents.inception({ repoName, ...input });
+      const report = buildInceptionReport(facts, result, repoName);
+      await emit("inception", report, renderInception(report));
       break;
     }
     default:
